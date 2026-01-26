@@ -7,23 +7,30 @@ const PORT = process.env.PORT || 3000;
 let currentTargetUrl = 'https://google.com';
 
 const server = http.createServer((req, res) => {
-    // We use the host header to construct the URL correctly in a cloud environment
-    const url = new URL(req.url, `http://${req.headers.host}`);
+    // Robust parsing for production
+    const [rawPath, rawQuery] = req.url.split('?');
+    const query = new URLSearchParams(rawQuery || '');
+    const pathName = rawPath.endsWith('/') && rawPath.length > 1 ? rawPath.slice(0, -1) : rawPath;
 
-    // DYNAMIC REDIRECT LOGIC (What the phone sees)
-    if (url.pathname === '/r') {
-        console.log(`[REDIRECT] Sending user to: ${currentTargetUrl}`);
-        res.writeHead(302, { 'Location': currentTargetUrl });
+    // 1. DYNAMIC REDIRECT LOGIC
+    if (pathName === '/r') {
+        console.log(`[PHONE] Redirecting to: ${currentTargetUrl}`);
+        res.writeHead(302, {
+            'Location': currentTargetUrl,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
         res.end();
         return;
     }
 
-    // TARGET MANAGEMENT API (What the PC sends)
-    if (url.pathname === '/api/set-target') {
-        const newUrl = url.searchParams.get('url');
+    // 2. TARGET MANAGEMENT API
+    if (pathName === '/api/set-target') {
+        const newUrl = query.get('url');
         if (newUrl) {
             currentTargetUrl = newUrl;
-            console.log(`[SERVER] Target updated to: ${currentTargetUrl}`);
+            console.log(`[SERVER] New Target Set: ${currentTargetUrl}`);
             res.writeHead(200, {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
@@ -33,8 +40,8 @@ const server = http.createServer((req, res) => {
         }
     }
 
-    // STATIC FILE SERVING
-    let filePath = '.' + url.pathname;
+    // 3. STATIC FILE SERVING
+    let filePath = '.' + pathName;
     if (filePath === './' || filePath === '.') filePath = './index.html';
 
     const extname = String(path.extname(filePath)).toLowerCase();
