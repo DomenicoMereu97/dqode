@@ -1,27 +1,29 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
-const PORT = 3000;
-let currentTargetUrl = 'https://google.com'; // Default
+// Railway assigns the port dynamically via the PORT environment variable
+const PORT = process.env.PORT || 3000;
+let currentTargetUrl = 'https://google.com';
 
 const server = http.createServer((req, res) => {
+    // We use the host header to construct the URL correctly in a cloud environment
     const url = new URL(req.url, `http://${req.headers.host}`);
 
-    // LOGICA DI REDIRECT (Quello che vede il telefono)
+    // DYNAMIC REDIRECT LOGIC (What the phone sees)
     if (url.pathname === '/r') {
+        console.log(`[REDIRECT] Sending user to: ${currentTargetUrl}`);
         res.writeHead(302, { 'Location': currentTargetUrl });
         res.end();
         return;
     }
 
-    // API PER IMPOSTARE IL TARGET (Quello che invia il PC)
+    // TARGET MANAGEMENT API (What the PC sends)
     if (url.pathname === '/api/set-target') {
         const newUrl = url.searchParams.get('url');
         if (newUrl) {
             currentTargetUrl = newUrl;
-            console.log(`\x1b[33m[DYNAMIC]\x1b[0m Target aggiornato a: ${currentTargetUrl}`);
+            console.log(`[SERVER] Target updated to: ${currentTargetUrl}`);
             res.writeHead(200, {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
@@ -31,23 +33,22 @@ const server = http.createServer((req, res) => {
         }
     }
 
-    // SERVIZIO FILE STATICI (L'interfaccia dell'app)
+    // STATIC FILE SERVING
     let filePath = '.' + url.pathname;
     if (filePath === './' || filePath === '.') filePath = './index.html';
 
-    // Se stiamo cercando di caricare index.html ma c'è ?r=1 (vecchio metodo), facciamo redirect 
-    if (url.searchParams.get('r') === '1') {
-        res.writeHead(302, { 'Location': currentTargetUrl });
-        res.end();
-        return;
-    }
-
     const extname = String(path.extname(filePath)).toLowerCase();
-    const mimeTypes = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
+    const mimeTypes = {
+        '.html': 'text/html',
+        '.js': 'text/javascript',
+        '.css': 'text/css',
+        '.ico': 'image/x-icon'
+    };
     const contentType = mimeTypes[extname] || 'application/octet-stream';
 
     fs.readFile(filePath, (error, content) => {
         if (error) {
+            // Fallback to index.html for SPA-like behavior or error handling
             fs.readFile('./index.html', (err, cont) => {
                 res.writeHead(200, { 'Content-Type': 'text/html' });
                 res.end(cont, 'utf-8');
@@ -59,23 +60,9 @@ const server = http.createServer((req, res) => {
     });
 });
 
-const getLocalIp = () => {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) return iface.address;
-        }
-    }
-    return 'localhost';
-};
-
-const localIp = getLocalIp();
-
+// IMPORTANT: Listen on 0.0.0.0 to be accessible on the public internet (Railway/Heroku/etc)
 server.listen(PORT, '0.0.0.0', () => {
-    console.log('\x1b[36m%s\x1b[0m', '---------------------------------------------------');
-    console.log('\x1b[1m%s\x1b[0m', '  DEQODE ENGINE V2 - ONLINE');
-    console.log('\x1b[36m%s\x1b[0m', '---------------------------------------------------');
-    console.log('  PC Dashboard:   \x1b[32mhttp://' + localIp + ':' + PORT + '\x1b[0m');
-    console.log('  DYNAMIC QR:     \x1b[33mAccedi al link sopra dal PC per generare il QR\x1b[0m');
-    console.log('\x1b[36m%s\x1b[0m', '---------------------------------------------------');
+    console.log(`-----------------------------------------`);
+    console.log(`DEQODE SERVER ONLINE ON PORT ${PORT}`);
+    console.log(`-----------------------------------------`);
 });

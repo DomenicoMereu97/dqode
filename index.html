@@ -295,11 +295,6 @@
                     </button>
 
                     <div className="glass p-12 rounded-[3rem] flex flex-col items-center gap-8 shadow-2xl border-white/5">
-                        {isLocalhost && (
-                            <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl text-yellow-500 text-[10px] text-center max-w-xs mb-4">
-                                <strong>ATTENZIONE:</strong> Sei su localhost. Dal cellulare usa l'indirizzo IP del PC (es. 192.168...) per far funzionare il QR.
-                            </div>
-                        )}
                         <div className="p-6 bg-white rounded-[2.5rem] shadow-2xl">
                             <canvas ref={canvasRef} width="320" height="320" className="max-w-full h-auto"></canvas>
                         </div>
