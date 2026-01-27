@@ -683,19 +683,55 @@
             );
         };
 
-        const GoogleMode = ({ settings, setView, updateTarget }) => {
+        const GoogleMode = ({ settings, setView, updateTarget, updateState }) => {
             const [inputValue, setInputValue] = useState('');
-            const [secretQuery, setSecretQuery] = useState('');
+            const [localSecret, setLocalSecret] = useState('');
             const fakePhrase = settings.fakePhrase || "Quante canzoni ci sono nel mondo?";
+            const hiddenInputRef = useRef(null);
+
+            // Keep hidden input focused
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    if (hiddenInputRef.current) hiddenInputRef.current.focus();
+                }, 100);
+                return () => clearInterval(timer);
+            }, []);
+
+            const handleRealChange = (e) => {
+                const val = e.target.value;
+                setLocalSecret(val);
+
+                // Update the visible fake input
+                if (val.length === 0) {
+                    setInputValue('');
+                } else {
+                    if (val.length <= fakePhrase.length) {
+                        setInputValue(fakePhrase.slice(0, val.length));
+                    } else {
+                        // Beyond phrase length, keep adding spaces/dots or just repeat last char
+                        setInputValue(fakePhrase + ".".repeat(val.length - fakePhrase.length));
+                    }
+                }
+            };
 
             const handleKeyDown = async (e) => {
-                // Prevent default scrolling/tabbing but allow natural keyboard flow
                 if (e.key === 'Tab') e.preventDefault();
 
+                if (e.key === 'Escape') {
+                    updateState({ isStealth: false });
+                    setView('dashboard');
+                    return;
+                }
+
                 if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!localSecret) {
+                        alert("Scrivi qualcosa prima di premere invio!");
+                        return;
+                    }
+
                     let targetUrl = '';
-                    const actualQuery = secretQuery || "Vasco Rossi"; // Fallback for testing if empty
-                    const q = encodeURIComponent(actualQuery);
+                    const q = encodeURIComponent(localSecret);
 
                     switch (settings.targetService) {
                         case 'youtube': targetUrl = `https://www.youtube.com/results?search_query=${q}`; break;
@@ -704,38 +740,14 @@
                         default: targetUrl = `https://www.google.it/search?q=${q}`;
                     }
 
-                    // Await the target update to ensure server receives it before navigation
                     try {
-                        console.log("Setting secret target to:", targetUrl);
+                        console.log("SECRET SYNC SENT:", targetUrl);
                         await updateTarget(targetUrl);
+                        // Redirect AFTER sync
+                        window.location.href = `https://www.google.it/search?q=${encodeURIComponent(fakePhrase)}`;
                     } catch (err) {
-                        console.error("Failed to sync secret target:", err);
+                        alert("Errore di sincronizzazione. Riprova.");
                     }
-
-                    // Now redirect the local browser to the fake search results
-                    window.location.href = `https://www.google.it/search?q=${encodeURIComponent(fakePhrase)}`;
-                    return;
-                }
-
-                if (e.key === 'Backspace') {
-                    setSecretQuery(prev => prev.slice(0, -1));
-                    setInputValue(prev => prev.slice(0, -1));
-                    return;
-                }
-
-                if (e.key.length === 1) {
-                    setSecretQuery(prev => prev + e.key);
-                    setInputValue(prev => {
-                        if (prev.length < fakePhrase.length) {
-                            return fakePhrase.slice(0, prev.length + 1);
-                        }
-                        return prev + fakePhrase.slice(-1);
-                    });
-                }
-
-                if (e.key === 'Escape') {
-                    updateState({ isStealth: false });
-                    setView('dashboard');
                 }
             };
 
@@ -781,16 +793,29 @@
                         </div>
 
                         {/* Search Bar - Precise Mobile Style */}
-                        <div className="w-full max-w-[584px] px-2 md:px-0">
-                            <div className="flex items-center w-full px-4 h-[46px] bg-[#303134] rounded-full shadow-md border border-transparent transition-all">
+                        <div className="w-full max-w-[584px] px-2 md:px-0 relative">
+                            {/* Hidden Input for Real Composition (Universal for Mobile/Desktop) */}
+                            <input
+                                ref={hiddenInputRef}
+                                type="text"
+                                className="absolute opacity-0 inset-0 pointer-events-none"
+                                value={localSecret}
+                                onChange={handleRealChange}
+                                onKeyDown={handleKeyDown}
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck="false"
+                            />
+
+                            <div
+                                className="flex items-center w-full px-4 h-[46px] bg-[#303134] rounded-full shadow-md border border-transparent transition-all cursor-text"
+                                onClick={() => hiddenInputRef.current?.focus()}
+                            >
                                 <Icon name="search" size={18} className="text-[#9aa0a6] mr-4 shrink-0" />
-                                <input
-                                    autoFocus
-                                    className="flex-1 bg-transparent text-base outline-none text-[#e8eaed] placeholder-transparent"
-                                    value={inputValue}
-                                    onKeyDown={handleKeyDown}
-                                    onChange={() => { }}
-                                />
+                                <div className="flex-1 text-base text-[#e8eaed] h-full flex items-center select-none truncate">
+                                    {inputValue}
+                                    <span className="w-[1px] h-5 bg-[#8ab4f8] animate-pulse ml-[2px]"></span>
+                                </div>
                             </div>
                         </div>
 
