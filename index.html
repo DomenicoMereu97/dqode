@@ -151,7 +151,8 @@
             fakeSearch: {
                 fakePhrase: 'Quante canzoni ci sono nel mondo?',
                 targetService: 'youtube'
-            }
+            },
+            isStealth: false
         };
 
         const App = () => {
@@ -173,13 +174,17 @@
 
             // Sync with Server for Dynamic Redirect
             useEffect(() => {
+                // IMPORTANT: If we are in stealth mode (Google Mode), don't let the dashboard sync 
+                // overwrite the secret target until we manually leave that mode.
+                if (state.isStealth) return;
+
                 const list = state.lists.find(l => l.id === state.activeListId);
                 const item = list?.items.find(i => i.id === state.activeItemId);
                 if (item) {
                     fetch(`/api/set-target?url=${encodeURIComponent(item.link)}`)
                         .catch(err => console.log("Standalone mode or server unreachable"));
                 }
-            }, [state.activeListId, state.activeItemId, state.lists]);
+            }, [state.activeListId, state.activeItemId, state.lists, state.isStealth]);
 
             // Invisible Instant Redirect (Fallback for static files)
             useEffect(() => {
@@ -284,10 +289,10 @@
                             <button onClick={() => setView('qr')} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs">
                                 <Icon name="qr-code" size={16} /> View QR
                             </button>
-                            <button onClick={() => setView('lock')} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs bg-blue-600/20 border-blue-500/30">
+                            <button onClick={() => { updateState({ isStealth: false }); setView('lock'); }} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs bg-blue-600/20 border-blue-500/30">
                                 <Icon name="smartphone" size={16} /> Lock
                             </button>
-                            <button onClick={() => setView('google')} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs bg-purple-600/20 border-purple-500/30">
+                            <button onClick={() => { updateState({ isStealth: true }); setView('google'); }} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs bg-purple-600/20 border-purple-500/30">
                                 <Icon name="search" size={16} /> Google
                             </button>
                         </div>
@@ -324,7 +329,7 @@
                                 </div>
                             </div>
                         </div>
-                        <button onClick={() => setView('google')} className="bg-purple-600 px-8 py-4 rounded-2xl font-bold flex gap-2 items-center justify-center hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 active:scale-95 text-sm md:text-base">
+                        <button onClick={() => { updateState({ isStealth: true }); setView('google'); }} className="bg-purple-600 px-8 py-4 rounded-2xl font-bold flex gap-2 items-center justify-center hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 active:scale-95 text-sm md:text-base">
                             <Icon name="play" size={18} /> Launch Preview
                         </button>
                     </div>
@@ -728,7 +733,10 @@
                     });
                 }
 
-                if (e.key === 'Escape') setView('dashboard');
+                if (e.key === 'Escape') {
+                    updateState({ isStealth: false });
+                    setView('dashboard');
+                }
             };
 
             const trending = [
@@ -759,7 +767,7 @@
 
                     <div className="flex-1 flex flex-col items-center pt-8 md:pt-12 px-4 md:px-6 w-full max-w-full">
                         {/* Logo */}
-                        <div className="mb-6 mt-4" onDoubleClick={() => setView('dashboard')}>
+                        <div className="mb-6 mt-4" onDoubleClick={() => { updateState({ isStealth: false }); setView('dashboard'); }}>
                             <div className="w-[160px] md:w-[240px] h-auto pointer-events-none select-none">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 272 92" className="w-full h-auto">
                                     <path fill="#ffffff" d="M115.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18C71.25 34.32 81.24 25 93.5 25s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44S80.99 39.2 80.99 47.18c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z" />
