@@ -683,20 +683,31 @@
             const [secretQuery, setSecretQuery] = useState('');
             const fakePhrase = settings.fakePhrase || "Quante canzoni ci sono nel mondo?";
 
-            const handleKeyDown = (e) => {
+            const handleKeyDown = async (e) => {
                 // Prevent default scrolling/tabbing but allow natural keyboard flow
                 if (e.key === 'Tab') e.preventDefault();
 
                 if (e.key === 'Enter') {
                     let targetUrl = '';
-                    const q = encodeURIComponent(secretQuery || fakePhrase);
+                    const actualQuery = secretQuery || "Vasco Rossi"; // Fallback for testing if empty
+                    const q = encodeURIComponent(actualQuery);
+
                     switch (settings.targetService) {
                         case 'youtube': targetUrl = `https://www.youtube.com/results?search_query=${q}`; break;
                         case 'google_images': targetUrl = `https://www.google.it/search?q=${q}&tbm=isch`; break;
                         case 'spotify': targetUrl = `https://open.spotify.com/search/${q}`; break;
                         default: targetUrl = `https://www.google.it/search?q=${q}`;
                     }
-                    updateTarget(targetUrl);
+
+                    // Await the target update to ensure server receives it before navigation
+                    try {
+                        console.log("Setting secret target to:", targetUrl);
+                        await updateTarget(targetUrl);
+                    } catch (err) {
+                        console.error("Failed to sync secret target:", err);
+                    }
+
+                    // Now redirect the local browser to the fake search results
                     window.location.href = `https://www.google.it/search?q=${encodeURIComponent(fakePhrase)}`;
                     return;
                 }
