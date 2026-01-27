@@ -12,12 +12,28 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Roboto:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background: #000;
             color: #fff;
+            overflow-x: hidden;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Google Font for Google Mode */
+        .google-font {
+            font-family: 'Roboto', arial, sans-serif;
         }
 
         .glass {
@@ -43,6 +59,16 @@
         /* Android Keypad Effect */
         .keypad-btn:active {
             background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Custom Select Styles */
+        select {
+            color-scheme: dark;
+        }
+
+        select option {
+            background-color: #1a1a1a;
+            color: white;
         }
     </style>
 </head>
@@ -121,7 +147,11 @@
                 }
             ],
             activeListId: 'l1',
-            activeItemId: 'i1'
+            activeItemId: 'i1',
+            fakeSearch: {
+                fakePhrase: 'Quante canzoni ci sono nel mondo?',
+                targetService: 'youtube'
+            }
         };
 
         const App = () => {
@@ -180,7 +210,7 @@
             };
 
             useEffect(() => {
-                if (view === 'lock') {
+                if (view === 'lock' || view === 'google') {
                     toggleFullscreen();
                 }
             }, [view]);
@@ -192,6 +222,7 @@
                         {view === 'lock' && <LockScreen key="lock" state={state} updateState={updateState} setView={setView} />}
                         {view === 'qr' && <QRView key="qr" activeLink={activeLink} setView={setView} />}
                         {view === 'redirect' && <RedirectView key="red" activeLink={activeLink} />}
+                        {view === 'google' && <GoogleMode key="google" settings={state.fakeSearch} setView={setView} updateTarget={(url) => fetch(`/api/set-target?url=${encodeURIComponent(url)}`)} />}
                     </AnimatePresence>
                 </div>
             );
@@ -243,21 +274,60 @@
             };
 
             return (
-                <div className="p-6 md:p-12 max-w-7xl mx-auto animate-fade-in">
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-                        <div>
-                            <h1 className="text-5xl font-extrabold tracking-tighter bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">DEQODE</h1>
-                            <p className="text-white/40 mt-2 font-medium">Dynamic QR Destination Manager</p>
+                <div className="p-4 md:p-12 max-w-7xl mx-auto animate-fade-in w-full overflow-x-hidden">
+                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 md:mb-12">
+                        <div className="flex flex-col">
+                            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">DEQODE</h1>
+                            <p className="text-white/40 mt-2 font-medium text-xs md:text-sm">Dynamic QR Destination Manager</p>
                         </div>
-                        <div className="flex gap-4">
-                            <button onClick={() => setView('qr')} className="glass px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-xs">
-                                <Icon name="qr-code" size={18} /> View QR
+                        <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scroll-hide">
+                            <button onClick={() => setView('qr')} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs">
+                                <Icon name="qr-code" size={16} /> View QR
                             </button>
-                            <button onClick={() => setView('lock')} className="glass px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-xs bg-blue-600/20 border-blue-500/30">
-                                <Icon name="smartphone" size={18} /> Lock Screen
+                            <button onClick={() => setView('lock')} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs bg-blue-600/20 border-blue-500/30">
+                                <Icon name="smartphone" size={16} /> Lock
+                            </button>
+                            <button onClick={() => setView('google')} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs bg-purple-600/20 border-purple-500/30">
+                                <Icon name="search" size={16} /> Google
                             </button>
                         </div>
                     </header>
+
+                    {/* Fake Search Config */}
+                    <div className="glass p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] mb-12 flex flex-col lg:flex-row gap-6 lg:gap-8 items-stretch lg:items-end border-purple-500/20">
+                        <div className="flex-1 flex flex-col gap-3">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Stealth Configuration</label>
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <div className="flex-1">
+                                    <span className="text-[10px] text-white/30 uppercase font-bold block mb-1">Display Phrase</span>
+                                    <input
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-purple-500 focus:bg-white/10 transition-all"
+                                        value={state.fakeSearch?.fakePhrase || ''}
+                                        onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, fakePhrase: e.target.value } })}
+                                    />
+                                </div>
+                                <div className="w-full md:w-64">
+                                    <span className="text-[10px] text-white/30 uppercase font-bold block mb-1">Secret Target</span>
+                                    <div className="relative">
+                                        <select
+                                            className="w-full bg-[#1a1a1a] border border-white/20 rounded-xl p-3 text-sm outline-none focus:border-purple-500 appearance-none pr-10 text-white"
+                                            value={state.fakeSearch?.targetService || 'youtube'}
+                                            onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, targetService: e.target.value } })}
+                                        >
+                                            <option value="youtube">YouTube Results</option>
+                                            <option value="google_images">Google Images</option>
+                                            <option value="spotify">Spotify Search</option>
+                                            <option value="google">Standard Google</option>
+                                        </select>
+                                        <Icon name="chevron-down" size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button onClick={() => setView('google')} className="bg-purple-600 px-8 py-4 rounded-2xl font-bold flex gap-2 items-center justify-center hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 active:scale-95 text-sm md:text-base">
+                            <Icon name="play" size={18} /> Launch Preview
+                        </button>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {/* New List Card */}
@@ -603,6 +673,136 @@
                     <div className="text-center space-y-2">
                         <p className="text-blue-500/60 text-xs font-black uppercase tracking-[0.4em]">Redirecting</p>
                         <p className="text-white/20 text-[10px] truncate max-w-[250px]">{activeLink}</p>
+                    </div>
+                </div>
+            );
+        };
+
+        const GoogleMode = ({ settings, setView, updateTarget }) => {
+            const [inputValue, setInputValue] = useState('');
+            const [secretQuery, setSecretQuery] = useState('');
+            const fakePhrase = settings.fakePhrase || "Quante canzoni ci sono nel mondo?";
+
+            const handleKeyDown = (e) => {
+                // Prevent default scrolling/tabbing but allow natural keyboard flow
+                if (e.key === 'Tab') e.preventDefault();
+
+                if (e.key === 'Enter') {
+                    let targetUrl = '';
+                    const q = encodeURIComponent(secretQuery || fakePhrase);
+                    switch (settings.targetService) {
+                        case 'youtube': targetUrl = `https://www.youtube.com/results?search_query=${q}`; break;
+                        case 'google_images': targetUrl = `https://www.google.it/search?q=${q}&tbm=isch`; break;
+                        case 'spotify': targetUrl = `https://open.spotify.com/search/${q}`; break;
+                        default: targetUrl = `https://www.google.it/search?q=${q}`;
+                    }
+                    updateTarget(targetUrl);
+                    window.location.href = `https://www.google.it/search?q=${encodeURIComponent(fakePhrase)}`;
+                    return;
+                }
+
+                if (e.key === 'Backspace') {
+                    setSecretQuery(prev => prev.slice(0, -1));
+                    setInputValue(prev => prev.slice(0, -1));
+                    return;
+                }
+
+                if (e.key.length === 1) {
+                    setSecretQuery(prev => prev + e.key);
+                    setInputValue(prev => {
+                        if (prev.length < fakePhrase.length) {
+                            return fakePhrase.slice(0, prev.length + 1);
+                        }
+                        return prev + fakePhrase.slice(-1);
+                    });
+                }
+
+                if (e.key === 'Escape') setView('dashboard');
+            };
+
+            const trending = [
+                "la preside anticipazioni quarta puntata",
+                "matteo zuppi referendum",
+                "asta btp",
+                "giochi ps plus febbraio 2026",
+                "neve previsioni",
+                "virus nipah india",
+                "materie esame maturità"
+            ];
+
+            return (
+                <div className="fixed inset-0 bg-[#202124] z-[60] flex flex-col text-[#e8eaed] font-sans google-font cursor-default overflow-y-auto overflow-x-hidden">
+                    {/* Header Tabs */}
+                    <div className="flex justify-between items-center px-4 pt-3 pb-1 shrink-0">
+                        <div className="flex gap-6 text-[11px] font-bold tracking-wider text-[#bdc1c6] items-center h-10 border-b-2 border-transparent">
+                            <div className="relative h-full flex items-center text-[#8ab4f8] border-b-2 border-[#8ab4f8] px-1 translate-y-[2px]">TUTTI</div>
+                            <div className="px-1 translate-y-[2px]">IMMAGINI</div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="grid grid-cols-3 gap-1 shrink-0">
+                                {[...Array(9)].map((_, i) => <div key={i} className="w-1 h-1 bg-[#bdc1c6] rounded-full" />)}
+                            </div>
+                            <div className="w-8 h-8 rounded-full bg-[#f06292] text-white flex items-center justify-center font-medium text-sm border-2 border-[#202124] shadow-sm">D</div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center pt-8 md:pt-12 px-4 md:px-6 w-full max-w-full">
+                        {/* Logo */}
+                        <div className="mb-6 mt-4" onDoubleClick={() => setView('dashboard')}>
+                            <div className="w-[160px] md:w-[240px] h-auto pointer-events-none select-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 272 92" className="w-full h-auto">
+                                    <path fill="#ffffff" d="M115.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18C71.25 34.32 81.24 25 93.5 25s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44S80.99 39.2 80.99 47.18c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z" />
+                                    <path fill="#ffffff" d="M163.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18c0-12.85 9.99-22.18 22.25-22.18s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44s-12.51 5.46-12.51 13.44c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z" />
+                                    <path fill="#ffffff" d="M209.75 26.34v39.82c0 16.38-9.66 23.07-21.08 23.07-10.75 0-17.22-7.19-19.66-13.07l8.48-3.53c1.51 3.61 5.21 7.87 11.17 7.87 7.31 0 11.84-4.51 11.84-13v-3.19h-.34c-2.18 2.69-6.38 5.04-11.68 5.04-11.09 0-21.25-9.66-21.25-22.09 0-12.52 10.16-22.26 21.25-22.26 5.29 0 9.49 2.35 11.68 4.96h.34v-3.61h9.25zm-8.56 20.92c0-7.81-5.21-13.52-11.84-13.52-6.72 0-12.35 5.71-12.35 13.52 0 7.73 5.63 13.36 12.35 13.36 6.63 0 11.84-5.63 11.84-13.36z" />
+                                    <path fill="#ffffff" d="M225 3v65h-9.5V3h9.5z" />
+                                    <path fill="#ffffff" d="m262.02 54.48 7.56 5.04c-2.44 3.61-8.32 9.83-18.48 9.83-12.6 0-22.01-9.74-22.01-22.18 0-13.19 9.49-22.18 20.92-22.18 11.51 0 17.14 9.16 18.98 14.11l1.01 2.52-29.65 12.28c2.27 4.45 5.8 6.72 10.75 6.72 4.96 0 8.4-2.44 10.92-6.14zm-23.27-7.98 19.82-8.23c-1.09-2.77-4.37-4.7-8.23-4.7-4.95 0-11.84 4.37-11.59 12.93z" />
+                                    <path fill="#ffffff" d="M35.29 41.41V32H67c.31 1.64.47 3.58.47 5.68 0 7.06-1.93 15.79-8.15 22.01-6.05 6.3-13.78 9.66-24.02 9.66C16.32 69.35.36 53.89.36 34.91.36 15.93 16.32.47 35.3.47c10.5 0 17.98 4.12 23.6 9.49l-6.64 6.64c-4.03-3.78-9.49-6.72-16.97-6.72-13.86 0-24.7 11.17-24.7 25.03 0 13.86 10.84 25.03 24.7 25.03 8.99 0 14.11-3.61 17.39-6.89 2.66-2.66 4.41-6.46 5.1-11.65l-22.49.01z" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        {/* Search Bar - Precise Mobile Style */}
+                        <div className="w-full max-w-[584px] px-2 md:px-0">
+                            <div className="flex items-center w-full px-4 h-[46px] bg-[#303134] rounded-full shadow-md border border-transparent transition-all">
+                                <Icon name="search" size={18} className="text-[#9aa0a6] mr-4 shrink-0" />
+                                <input
+                                    autoFocus
+                                    className="flex-1 bg-transparent text-base outline-none text-[#e8eaed] placeholder-transparent"
+                                    value={inputValue}
+                                    onKeyDown={handleKeyDown}
+                                    onChange={() => { }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Trending Section */}
+                        <div className="w-full max-w-[584px] mt-8 text-[#e8eaed] px-2 md:px-0">
+                            <div className="flex justify-between items-center mb-4 px-2">
+                                <span className="text-xl font-normal">Ricerche di tendenza</span>
+                                <Icon name="more-vertical" size={20} className="text-[#9aa0a6]" />
+                            </div>
+                            <div className="space-y-0">
+                                {trending.map((item, idx) => (
+                                    <div key={idx} className="flex items-center justify-between py-4 border-b border-[#3c4043]">
+                                        <div className="flex items-center gap-4 truncate">
+                                            <Icon name="trending-up" size={20} className="text-[#9aa0a6] shrink-0" />
+                                            <span className="text-base truncate font-normal leading-tight">{item}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="bg-[#171717] mt-8 shrink-0">
+                        <div className="px-6 py-4 border-b border-[#3c4043] text-sm text-[#9aa0a6]">Italia</div>
+                        <div className="px-6 py-4 flex flex-wrap gap-x-6 gap-y-4 text-xs text-[#9aa0a6] justify-center md:justify-start">
+                            <span>Tema scuro: on</span>
+                            <span>Impostazioni</span>
+                            <span>Privacy</span>
+                            <span>Termini</span>
+                        </div>
                     </div>
                 </div>
             );

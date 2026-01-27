@@ -72,4 +72,9 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`-----------------------------------------`);
     console.log(`DEQODE SERVER ONLINE ON PORT ${PORT}`);
     console.log(`-----------------------------------------`);
+
+    // Log target status periodically for monitoring
+    setInterval(() => {
+        console.log(`[MONITOR] Current QR Target: ${currentTargetUrl}`);
+    }, 5000);
 });
