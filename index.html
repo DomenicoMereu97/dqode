@@ -150,7 +150,13 @@
             activeItemId: 'i1',
             fakeSearch: {
                 fakePhrase: 'Quante canzoni ci sono nel mondo?',
-                targetService: 'youtube'
+                targetService: 'youtube',
+                presets: [
+                    'Quante canzoni ci sono nel mondo?',
+                    'Significati carte da poker',
+                    'Quanti animali esistono nel mondo?',
+                    'Quante città esistono nel mondo?'
+                ]
             },
             isStealth: false
         };
@@ -159,7 +165,18 @@
             const [view, setView] = useState('dashboard'); // dashboard, lock, qr, redirect
             const [state, setState] = useState(() => {
                 const saved = localStorage.getItem(STORAGE_KEY);
-                return saved ? JSON.parse(saved) : defaultState;
+                if (!saved) return defaultState;
+
+                const parsed = JSON.parse(saved);
+                // Deep merge or at least ensure fakeSearch structure exists
+                return {
+                    ...defaultState,
+                    ...parsed,
+                    fakeSearch: {
+                        ...defaultState.fakeSearch,
+                        ...(parsed.fakeSearch || {})
+                    }
+                };
             });
 
             useEffect(() => {
@@ -227,7 +244,7 @@
                         {view === 'lock' && <LockScreen key="lock" state={state} updateState={updateState} setView={setView} />}
                         {view === 'qr' && <QRView key="qr" activeLink={activeLink} setView={setView} />}
                         {view === 'redirect' && <RedirectView key="red" activeLink={activeLink} />}
-                        {view === 'google' && <GoogleMode key="google" settings={state.fakeSearch} setView={setView} updateTarget={(url) => fetch(`/api/set-target?url=${encodeURIComponent(url)}`)} />}
+                        {view === 'google' && <GoogleMode key="google" settings={state.fakeSearch} setView={setView} updateTarget={(url) => fetch(`/api/set-target?url=${encodeURIComponent(url)}`)} updateState={updateState} />}
                     </AnimatePresence>
                 </div>
             );
@@ -299,39 +316,82 @@
                     </header>
 
                     {/* Fake Search Config */}
-                    <div className="glass p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] mb-12 flex flex-col lg:flex-row gap-6 lg:gap-8 items-stretch lg:items-end border-purple-500/20">
-                        <div className="flex-1 flex flex-col gap-3">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Stealth Configuration</label>
-                            <div className="flex flex-col md:flex-row gap-4">
-                                <div className="flex-1">
-                                    <span className="text-[10px] text-white/30 uppercase font-bold block mb-1">Display Phrase</span>
-                                    <input
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-purple-500 focus:bg-white/10 transition-all"
-                                        value={state.fakeSearch?.fakePhrase || ''}
-                                        onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, fakePhrase: e.target.value } })}
-                                    />
-                                </div>
-                                <div className="w-full md:w-64">
-                                    <span className="text-[10px] text-white/30 uppercase font-bold block mb-1">Secret Target</span>
-                                    <div className="relative">
-                                        <select
-                                            className="w-full bg-[#1a1a1a] border border-white/20 rounded-xl p-3 text-sm outline-none focus:border-purple-500 appearance-none pr-10 text-white"
-                                            value={state.fakeSearch?.targetService || 'youtube'}
-                                            onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, targetService: e.target.value } })}
-                                        >
-                                            <option value="youtube">YouTube Results</option>
-                                            <option value="google_images">Google Images</option>
-                                            <option value="spotify">Spotify Search</option>
-                                            <option value="google">Standard Google</option>
-                                        </select>
-                                        <Icon name="chevron-down" size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                    <div className="glass p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] mb-12 flex flex-col gap-8 border-purple-500/20">
+                        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-stretch lg:items-end">
+                            <div className="flex-1 flex flex-col gap-3">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Stealth Configuration</label>
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1">
+                                        <span className="text-[10px] text-white/30 uppercase font-bold block mb-1">Display Phrase</span>
+                                        <div className="flex gap-2">
+                                            <input
+                                                className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-purple-500 focus:bg-white/10 transition-all"
+                                                value={state.fakeSearch?.fakePhrase || ''}
+                                                onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, fakePhrase: e.target.value } })}
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const phrase = state.fakeSearch.fakePhrase;
+                                                    if (phrase && !state.fakeSearch.presets.includes(phrase)) {
+                                                        updateState({ fakeSearch: { ...state.fakeSearch, presets: [...state.fakeSearch.presets, phrase] } });
+                                                    }
+                                                }}
+                                                className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 transition-all text-purple-400"
+                                                title="Salva come preset"
+                                            >
+                                                <Icon name="save" size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="w-full md:w-64">
+                                        <span className="text-[10px] text-white/30 uppercase font-bold block mb-1">Secret Target</span>
+                                        <div className="relative">
+                                            <select
+                                                className="w-full bg-[#1a1a1a] border border-white/20 rounded-xl p-3 text-sm outline-none focus:border-purple-500 appearance-none pr-10 text-white"
+                                                value={state.fakeSearch?.targetService || 'youtube'}
+                                                onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, targetService: e.target.value } })}
+                                            >
+                                                <option value="youtube">YouTube Results</option>
+                                                <option value="google_images">Google Images</option>
+                                                <option value="spotify">Spotify Search</option>
+                                                <option value="google">Standard Google</option>
+                                            </select>
+                                            <Icon name="chevron-down" size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <button onClick={() => { updateState({ isStealth: true }); setView('google'); }} className="bg-purple-600 px-8 py-4 rounded-2xl font-bold flex gap-2 items-center justify-center hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 active:scale-95 text-sm md:text-base h-[50px]">
+                                <Icon name="play" size={18} /> Launch Preview
+                            </button>
                         </div>
-                        <button onClick={() => { updateState({ isStealth: true }); setView('google'); }} className="bg-purple-600 px-8 py-4 rounded-2xl font-bold flex gap-2 items-center justify-center hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 active:scale-95 text-sm md:text-base">
-                            <Icon name="play" size={18} /> Launch Preview
-                        </button>
+
+                        {/* Presets List */}
+                        <div className="flex flex-col gap-3">
+                            <span className="text-[10px] text-white/30 uppercase font-bold block">Phrase Presets</span>
+                            <div className="flex flex-wrap gap-2">
+                                {(state.fakeSearch?.presets || []).map((p, idx) => (
+                                    <div key={idx} className="group flex items-center gap-2 bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-full pl-4 pr-2 py-1.5 transition-all cursor-pointer overflow-hidden">
+                                        <span
+                                            className="text-xs font-medium text-white/60 group-hover:text-white"
+                                            onClick={() => updateState({ fakeSearch: { ...state.fakeSearch, fakePhrase: p } })}
+                                        >
+                                            {p}
+                                        </span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const newPresets = state.fakeSearch.presets.filter((_, i) => i !== idx);
+                                                updateState({ fakeSearch: { ...state.fakeSearch, presets: newPresets } });
+                                            }}
+                                            className="w-6 h-6 rounded-full flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-400/10 transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Icon name="x" size={12} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
