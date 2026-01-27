@@ -494,8 +494,9 @@
 
             const handleOk = () => {
                 if (!pin) return;
-                let val = parseInt(pin);
-                let targetIdx = val >= 1000 && val % 1000 === 0 ? (val / 1000) - 1 : val - 1;
+
+                // Use the number exactly as entered (1-based index)
+                const targetIdx = parseInt(pin) - 1;
 
                 if (activeList && activeList.items[targetIdx]) {
                     const item = activeList.items[targetIdx];
@@ -521,9 +522,9 @@
 
                     <div className="z-10 w-full max-w-[340px] px-8 flex-1 flex flex-col justify-center">
                         <div className="flex flex-col items-center mb-10">
-                            <div className="flex gap-6 mb-8">
-                                {[...Array(4)].map((_, i) => (
-                                    <div key={i} className={`w-[11px] h-[11px] rounded-full border border-white/40 transition-all duration-150 ${i < pin.length ? 'bg-white' : 'bg-transparent'}`} />
+                            <div className="flex gap-4 mb-8 flex-wrap justify-center max-w-[280px]">
+                                {[...Array(Math.max(4, pin.length))].map((_, i) => (
+                                    <div key={i} className={`w-[10px] h-[10px] rounded-full border border-white/40 transition-all duration-150 ${i < pin.length ? 'bg-white scale-110 shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'bg-transparent opacity-30'}`} />
                                 ))}
                             </div>
                             <div className="h-4 flex items-center">
