@@ -152,6 +152,12 @@
                 fakePhrase: 'Quante canzoni ci sono nel mondo?',
                 targetService: 'youtube',
                 receiverMode: false,
+                services: [
+                    { id: 'youtube', name: 'YouTube Results', urlTemplate: 'https://www.youtube.com/results?search_query={q}' },
+                    { id: 'google_images', name: 'Google Images', urlTemplate: 'https://www.google.it/search?q={q}&tbm=isch' },
+                    { id: 'spotify', name: 'Spotify Search', urlTemplate: 'https://open.spotify.com/search/results/{q}' },
+                    { id: 'google', name: 'Standard Google', urlTemplate: 'https://www.google.it/search?q={q}' }
+                ],
                 presets: [
                     'Quante canzoni ci sono nel mondo?',
                     'Significati carte da poker',
@@ -352,10 +358,9 @@
                                                 value={state.fakeSearch?.targetService || 'youtube'}
                                                 onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, targetService: e.target.value } })}
                                             >
-                                                <option value="youtube">YouTube Results</option>
-                                                <option value="google_images">Google Images</option>
-                                                <option value="spotify">Spotify Search</option>
-                                                <option value="google">Standard Google</option>
+                                                {(state.fakeSearch?.services || []).map(s => (
+                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                ))}
                                             </select>
                                             <Icon name="chevron-down" size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
                                         </div>
@@ -412,6 +417,78 @@
                                         </button>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+
+                        {/* Target Services Management */}
+                        <div className="flex flex-col gap-3">
+                            <span className="text-[10px] text-white/30 uppercase font-bold block">Target Services</span>
+                            <div className="space-y-2">
+                                {(state.fakeSearch?.services || []).map(s => (
+                                    <div key={s.id} className="group flex items-center gap-3 bg-white/5 border border-white/10 hover:border-purple-500/30 rounded-xl p-3 transition-all">
+                                        <input
+                                            className="bg-transparent font-bold text-sm outline-none w-32 shrink-0 text-white/80 focus:text-white border-b border-transparent focus:border-purple-500/50 transition-all"
+                                            value={s.name}
+                                            onChange={e => {
+                                                const newServices = state.fakeSearch.services.map(sv => sv.id === s.id ? { ...sv, name: e.target.value } : sv);
+                                                updateState({ fakeSearch: { ...state.fakeSearch, services: newServices } });
+                                            }}
+                                        />
+                                        <input
+                                            className="bg-transparent text-[11px] text-white/30 font-mono outline-none flex-1 truncate focus:text-white/60 border-b border-transparent focus:border-purple-500/50 transition-all"
+                                            value={s.urlTemplate}
+                                            onChange={e => {
+                                                const newServices = state.fakeSearch.services.map(sv => sv.id === s.id ? { ...sv, urlTemplate: e.target.value } : sv);
+                                                updateState({ fakeSearch: { ...state.fakeSearch, services: newServices } });
+                                            }}
+                                            placeholder="https://example.com/search?q={q}"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                const newServices = state.fakeSearch.services.filter(sv => sv.id !== s.id);
+                                                const updates = { fakeSearch: { ...state.fakeSearch, services: newServices } };
+                                                if (state.fakeSearch.targetService === s.id && newServices.length > 0) {
+                                                    updates.fakeSearch.targetService = newServices[0].id;
+                                                }
+                                                updateState(updates);
+                                            }}
+                                            className="w-7 h-7 rounded-lg flex items-center justify-center text-white/10 hover:text-red-400 hover:bg-red-400/10 transition-all opacity-0 group-hover:opacity-100 shrink-0"
+                                        >
+                                            <Icon name="trash-2" size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {/* Add New Service */}
+                                <div className="flex items-center gap-3 border-2 border-dashed border-white/10 hover:border-purple-500/30 rounded-xl p-3 transition-all">
+                                    <input
+                                        id="newServiceName"
+                                        className="bg-transparent text-sm outline-none w-32 shrink-0 text-white/60 placeholder:text-white/15 font-semibold"
+                                        placeholder="Nome..."
+                                    />
+                                    <input
+                                        id="newServiceUrl"
+                                        className="bg-transparent text-[11px] text-white/40 font-mono outline-none flex-1 truncate placeholder:text-white/15"
+                                        placeholder="URL template con {q}..."
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const nameEl = document.getElementById('newServiceName');
+                                            const urlEl = document.getElementById('newServiceUrl');
+                                            const name = nameEl?.value?.trim();
+                                            const urlTemplate = urlEl?.value?.trim();
+                                            if (!name || !urlTemplate) return;
+                                            const id = 's_' + Date.now();
+                                            const newServices = [...(state.fakeSearch.services || []), { id, name, urlTemplate }];
+                                            updateState({ fakeSearch: { ...state.fakeSearch, services: newServices } });
+                                            nameEl.value = '';
+                                            urlEl.value = '';
+                                        }}
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-purple-400 hover:bg-purple-500/20 transition-all shrink-0"
+                                    >
+                                        <Icon name="plus" size={16} />
+                                    </button>
+                                </div>
+                                <span className="text-[9px] text-white/15 font-mono">Usa {'{q}'} nell'URL come segnaposto per la query di ricerca</span>
                             </div>
                         </div>
                     </div>
@@ -815,11 +892,12 @@
                     let targetUrl = '';
                     const q = encodeURIComponent(localSecret);
 
-                    switch (settings.targetService) {
-                        case 'youtube': targetUrl = `https://www.youtube.com/results?search_query=${q}`; break;
-                        case 'google_images': targetUrl = `https://www.google.it/search?q=${q}&tbm=isch`; break;
-                        case 'spotify': targetUrl = `https://open.spotify.com/search/${q}`; break;
-                        default: targetUrl = `https://www.google.it/search?q=${q}`;
+                    const services = settings.services || [];
+                    const service = services.find(s => s.id === settings.targetService);
+                    if (service) {
+                        targetUrl = service.urlTemplate.replace(/\{q\}/g, q);
+                    } else {
+                        targetUrl = `https://www.google.it/search?q=${q}`;
                     }
 
                     try {
