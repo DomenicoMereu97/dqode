@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEQODE Receiver</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #000;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            z-index: 10;
+        }
+
+        /* Radar Pulse Animation */
+        .radar-container {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radar-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            animation: radar-pulse 3s ease-out infinite;
+        }
+
+        .radar-ring:nth-child(1) {
+            width: 60px;
+            height: 60px;
+            animation-delay: 0s;
+        }
+
+        .radar-ring:nth-child(2) {
+            width: 100px;
+            height: 100px;
+            animation-delay: 0.6s;
+        }
+
+        .radar-ring:nth-child(3) {
+            width: 140px;
+            height: 140px;
+            animation-delay: 1.2s;
+        }
+
+        .radar-ring:nth-child(4) {
+            width: 180px;
+            height: 180px;
+            animation-delay: 1.8s;
+        }
+
+        @keyframes radar-pulse {
+            0% {
+                opacity: 0.8;
+                transform: scale(0.8);
+                border-color: rgba(139, 92, 246, 0.6);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1.5);
+                border-color: rgba(139, 92, 246, 0);
+            }
+        }
+
+        .radar-center {
+            width: 16px;
+            height: 16px;
+            background: #8b5cf6;
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.6), 0 0 60px rgba(139, 92, 246, 0.3);
+            animation: center-glow 2s ease-in-out infinite alternate;
+            z-index: 2;
+        }
+
+        @keyframes center-glow {
+            0% {
+                box-shadow: 0 0 20px rgba(139, 92, 246, 0.4), 0 0 40px rgba(139, 92, 246, 0.2);
+            }
+
+            100% {
+                box-shadow: 0 0 40px rgba(139, 92, 246, 0.8), 0 0 80px rgba(139, 92, 246, 0.4);
+            }
+        }
+
+        .status-label {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: rgba(139, 92, 246, 0.7);
+            animation: status-blink 2s ease-in-out infinite;
+        }
+
+        @keyframes status-blink {
+
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.15);
+            text-align: center;
+            max-width: 280px;
+            line-height: 1.6;
+            font-weight: 500;
+        }
+
+        /* Redirecting state */
+        .container.redirecting .radar-center {
+            background: #22c55e;
+            box-shadow: 0 0 40px rgba(34, 197, 94, 0.8), 0 0 80px rgba(34, 197, 94, 0.4);
+            animation: none;
+        }
+
+        .container.redirecting .radar-ring {
+            border-color: rgba(34, 197, 94, 0.4);
+            animation: radar-pulse-green 1s ease-out infinite;
+        }
+
+        @keyframes radar-pulse-green {
+            0% {
+                opacity: 0.8;
+                transform: scale(0.8);
+                border-color: rgba(34, 197, 94, 0.6);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1.5);
+                border-color: rgba(34, 197, 94, 0);
+            }
+        }
+
+        .container.redirecting .status-label {
+            color: #22c55e;
+            animation: none;
+            opacity: 1;
+        }
+
+        .redirect-url {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.2);
+            font-family: monospace;
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        /* Error state */
+        .container.error .radar-center {
+            background: #ef4444;
+            box-shadow: 0 0 40px rgba(239, 68, 68, 0.8);
+        }
+
+        .container.error .status-label {
+            color: #ef4444;
+        }
+
+        /* Background ambient */
+        .bg-ambient {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* Connection dots */
+        .connection-bar {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .connection-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, 0.4);
+            animation: dot-pulse 1.5s ease-in-out infinite;
+        }
+
+        .connection-dot:nth-child(2) {
+            animation-delay: 0.3s;
+        }
+
+        .connection-dot:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+
+        @keyframes dot-pulse {
+
+            0%,
+            100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-ambient"></div>
+    <div class="container" id="container">
+        <div class="radar-container">
+            <div class="radar-ring"></div>
+            <div class="radar-ring"></div>
+            <div class="radar-ring"></div>
+            <div class="radar-ring"></div>
+            <div class="radar-center"></div>
+        </div>
+
+        <div class="status-label" id="status">In attesa del segnale...</div>
+
+        <div class="connection-bar" id="connectionBar">
+            <div class="connection-dot"></div>
+            <div class="connection-dot"></div>
+            <div class="connection-dot"></div>
+        </div>
+
+        <div class="redirect-url" id="redirectUrl"></div>
+
+        <div class="info-text">
+            Questa pagina è in ascolto. Quando il pannello DEQODE invierà un reindirizzamento, verrai portato alla
+            destinazione automaticamente.
+        </div>
+    </div>
+
+    <script>
+        const POLL_INTERVAL = 800; // ms
+        let polling = true;
+        let pollCount = 0;
+
+        const container = document.getElementById('container');
+        const statusEl = document.getElementById('status');
+        const redirectUrlEl = document.getElementById('redirectUrl');
+        const connectionBar = document.getElementById('connectionBar');
+
+        async function pollForSignal() {
+            if (!polling) return;
+
+            try {
+                const response = await fetch('/api/receiver-signal', {
+                    method: 'GET',
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+
+                const data = await response.json();
+                pollCount++;
+
+                if (data.status === 'redirect' && data.url) {
+                    // Signal received!
+                    polling = false;
+                    container.classList.remove('error');
+                    container.classList.add('redirecting');
+                    statusEl.textContent = 'Reindirizzamento...';
+                    redirectUrlEl.textContent = data.url;
+                    connectionBar.style.display = 'none';
+
+                    // Small delay for visual feedback, then redirect
+                    setTimeout(() => {
+                        window.location.replace(data.url);
+                    }, 400);
+                    return;
+                }
+
+                // Still waiting (or reset), keep normal waiting state
+                container.classList.remove('error', 'redirecting');
+                connectionBar.style.display = 'flex';
+                redirectUrlEl.textContent = '';
+
+                if (pollCount % 5 === 0) {
+                    const dots = '.'.repeat((pollCount / 5) % 4);
+                    statusEl.textContent = `In attesa del segnale${dots}`;
+                }
+
+            } catch (err) {
+                console.error('Poll error:', err);
+                container.classList.add('error');
+                statusEl.textContent = 'Connessione persa. Riprovo...';
+
+                // Remove error state after retry
+                setTimeout(() => {
+                    container.classList.remove('error');
+                    statusEl.textContent = 'In attesa del segnale...';
+                }, 2000);
+            }
+
+            // Schedule next poll
+            setTimeout(pollForSignal, POLL_INTERVAL);
+        }
+
+        // Start polling
+        pollForSignal();
+    </script>
+</body>
+
+</html>

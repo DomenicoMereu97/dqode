@@ -151,6 +151,7 @@
             fakeSearch: {
                 fakePhrase: 'Quante canzoni ci sono nel mondo?',
                 targetService: 'youtube',
+                receiverMode: false,
                 presets: [
                     'Quante canzoni ci sono nel mondo?',
                     'Significati carte da poker',
@@ -244,7 +245,7 @@
                         {view === 'lock' && <LockScreen key="lock" state={state} updateState={updateState} setView={setView} />}
                         {view === 'qr' && <QRView key="qr" activeLink={activeLink} setView={setView} />}
                         {view === 'redirect' && <RedirectView key="red" activeLink={activeLink} />}
-                        {view === 'google' && <GoogleMode key="google" settings={state.fakeSearch} setView={setView} updateTarget={(url) => fetch(`/api/set-target?url=${encodeURIComponent(url)}`)} updateState={updateState} />}
+                        {view === 'google' && <GoogleMode key="google" settings={state.fakeSearch} setView={setView} updateTarget={(url) => fetch(`/api/set-target?url=${encodeURIComponent(url)}`)} updateState={updateState} receiverMode={state.fakeSearch?.receiverMode || false} />}
                     </AnimatePresence>
                 </div>
             );
@@ -309,7 +310,7 @@
                             <button onClick={() => { updateState({ isStealth: false }); setView('lock'); }} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs bg-blue-600/20 border-blue-500/30">
                                 <Icon name="smartphone" size={16} /> Lock
                             </button>
-                            <button onClick={() => { updateState({ isStealth: true }); setView('google'); }} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs bg-purple-600/20 border-purple-500/30">
+                            <button onClick={() => { fetch('/api/receiver-signal', { method: 'DELETE' }); updateState({ isStealth: true }); setView('google'); }} className="glass flex-shrink-0 px-4 md:px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all font-semibold uppercase tracking-wider text-[10px] md:text-xs bg-purple-600/20 border-purple-500/30">
                                 <Icon name="search" size={16} /> Google
                             </button>
                         </div>
@@ -360,8 +361,29 @@
                                         </div>
                                     </div>
                                 </div>
+                                {/* Receiver Mode Toggle */}
+                                <div className="flex items-center gap-3 mt-2">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            checked={state.fakeSearch?.receiverMode || false}
+                                            onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, receiverMode: e.target.checked } })}
+                                        />
+                                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white/40 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-checked:after:bg-white border border-white/10"></div>
+                                    </label>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-white/70">Receiver Mode</span>
+                                        <span className="text-[10px] text-white/30">Invia il redirect anche alla pagina <span className="font-mono text-purple-400/60">/r</span></span>
+                                    </div>
+                                    {state.fakeSearch?.receiverMode && (
+                                        <a href="/r" target="_blank" rel="noopener noreferrer" className="ml-auto text-[10px] font-bold text-purple-400 hover:text-purple-300 uppercase tracking-widest flex items-center gap-1 transition-all">
+                                            <Icon name="external-link" size={12} /> Apri Receiver
+                                        </a>
+                                    )}
+                                </div>
                             </div>
-                            <button onClick={() => { updateState({ isStealth: true }); setView('google'); }} className="bg-purple-600 px-8 py-4 rounded-2xl font-bold flex gap-2 items-center justify-center hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 active:scale-95 text-sm md:text-base h-[50px]">
+                            <button onClick={() => { fetch('/api/receiver-signal', { method: 'DELETE' }); updateState({ isStealth: true }); setView('google'); }} className="bg-purple-600 px-8 py-4 rounded-2xl font-bold flex gap-2 items-center justify-center hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 active:scale-95 text-sm md:text-base h-[50px]">
                                 <Icon name="play" size={18} /> Launch Preview
                             </button>
                         </div>
@@ -743,7 +765,7 @@
             );
         };
 
-        const GoogleMode = ({ settings, setView, updateTarget, updateState }) => {
+        const GoogleMode = ({ settings, setView, updateTarget, updateState, receiverMode }) => {
             const [inputValue, setInputValue] = useState('');
             const [localSecret, setLocalSecret] = useState('');
             const fakePhrase = settings.fakePhrase || "Quante canzoni ci sono nel mondo?";
@@ -803,6 +825,17 @@
                     try {
                         console.log("SECRET SYNC SENT:", targetUrl);
                         await updateTarget(targetUrl);
+
+                        // If receiver mode is on, also send signal to the receiver page
+                        if (receiverMode) {
+                            console.log("RECEIVER SIGNAL SENT:", targetUrl);
+                            await fetch('/api/receiver-signal', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ url: targetUrl })
+                            });
+                        }
+
                         // Redirect AFTER sync
                         window.location.href = `https://www.google.it/search?q=${encodeURIComponent(fakePhrase)}`;
                     } catch (err) {
