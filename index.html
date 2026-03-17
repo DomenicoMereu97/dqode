@@ -987,21 +987,20 @@
                         {/* Search Bar - Precise Mobile Style */}
                         <div className="w-full max-w-[584px] px-2 md:px-0 relative">
                             {/* Hidden Input for Real Composition (Universal for Mobile/Desktop) */}
-                            <input
+                            <textarea
                                 ref={hiddenInputRef}
-                                type="text"
-                                name={`search_field_${Math.random().toString(36).substring(7)}`}
-                                id={`search_id_${Math.random().toString(36).substring(7)}`}
+                                name={`search_${Math.random().toString(36).substring(7)}`}
                                 className="absolute opacity-0 inset-0 pointer-events-none"
                                 value={localSecret}
                                 onChange={handleRealChange}
                                 onKeyDown={handleKeyDown}
-                                autoComplete="one-time-code"
+                                autoComplete="chrome-off"
                                 autoCorrect="off"
                                 autoCapitalize="none"
                                 spellCheck="false"
-                                data-lpignore="true"
-                                aria-autocomplete="none"
+                                inputMode="search"
+                                rows="1"
+                                style={{ resize: 'none', fontSize: '16px' }} // 16px prevents iOS zoom
                             />
 
                             <div
