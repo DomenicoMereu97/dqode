@@ -152,6 +152,7 @@
                 fakePhrase: 'Quante canzoni ci sono nel mondo?',
                 targetService: 'youtube',
                 receiverMode: false,
+                isFakePhraseEnabled: true,
                 services: [
                     { id: 'youtube', name: 'YouTube Results', urlTemplate: 'https://www.youtube.com/results?search_query={q}' },
                     { id: 'google_images', name: 'Google Images', urlTemplate: 'https://www.google.it/search?q={q}&tbm=isch' },
@@ -386,6 +387,22 @@
                                             <Icon name="external-link" size={12} /> Apri Receiver
                                         </a>
                                     )}
+                                </div>
+                                {/* Fake Phrase Mode Toggle */}
+                                <div className="flex items-center gap-3 mt-2">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            checked={state.fakeSearch?.isFakePhraseEnabled !== false}
+                                            onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, isFakePhraseEnabled: e.target.checked } })}
+                                        />
+                                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white/40 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-checked:after:bg-white border border-white/10"></div>
+                                    </label>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-white/70">Fake Phrase Mode</span>
+                                        <span className="text-[10px] text-white/30">Mostra la domanda fake invece del testo reale</span>
+                                    </div>
                                 </div>
                             </div>
                             <button onClick={() => { fetch('/api/receiver-signal', { method: 'DELETE' }); updateState({ isStealth: true }); setView('google'); }} className="bg-purple-600 px-8 py-4 rounded-2xl font-bold flex gap-2 items-center justify-center hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 active:scale-95 text-sm md:text-base h-[50px]">
@@ -861,15 +878,18 @@
                 setLocalSecret(val);
 
                 // Update the visible fake input
-                if (val.length === 0) {
-                    setInputValue('');
-                } else {
-                    if (val.length <= fakePhrase.length) {
-                        setInputValue(fakePhrase.slice(0, val.length));
+                if (settings.isFakePhraseEnabled !== false) {
+                    if (val.length === 0) {
+                        setInputValue('');
                     } else {
-                        // Beyond phrase length, keep adding spaces/dots or just repeat last char
-                        setInputValue(fakePhrase + ".".repeat(val.length - fakePhrase.length));
+                        if (val.length <= fakePhrase.length) {
+                            setInputValue(fakePhrase.slice(0, val.length));
+                        } else {
+                            setInputValue(fakePhrase + ".".repeat(val.length - fakePhrase.length));
+                        }
                     }
+                } else {
+                    setInputValue(val);
                 }
             };
 
@@ -989,11 +1009,13 @@
                                 </div>
                             </div>
                             {/* Real input feedback peek */}
-                            <div className="absolute left-0 right-0 -bottom-6 text-center px-4 pointer-events-none">
-                                <span className="text-[10px] text-white/10 font-mono tracking-tight lowercase truncate block italic">
-                                    {localSecret || ' '}
-                                </span>
-                            </div>
+                            {settings.isFakePhraseEnabled !== false && (
+                                <div className="absolute left-0 right-0 -bottom-6 text-center px-4 pointer-events-none">
+                                    <span className="text-[10px] text-white/10 font-mono tracking-tight lowercase truncate block italic">
+                                        {localSecret || ' '}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Trending Section */}
