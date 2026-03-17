@@ -153,6 +153,7 @@
                 targetService: 'youtube',
                 receiverMode: false,
                 isFakePhraseEnabled: true,
+                isTopSpotifyEnabled: false,
                 services: [
                     { id: 'youtube', name: 'YouTube Results', urlTemplate: 'https://www.youtube.com/results?search_query={q}' },
                     { id: 'google_images', name: 'Google Images', urlTemplate: 'https://www.google.it/search?q={q}&tbm=isch' },
@@ -404,6 +405,22 @@
                                         <span className="text-[10px] text-white/30">Mostra la domanda fake invece del testo reale</span>
                                     </div>
                                 </div>
+                                {/* TopSpotify Mode Toggle */}
+                                <div className="flex items-center gap-3 mt-2">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            checked={state.fakeSearch?.isTopSpotifyEnabled || false}
+                                            onChange={e => updateState({ fakeSearch: { ...state.fakeSearch, isTopSpotifyEnabled: e.target.checked } })}
+                                        />
+                                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white/40 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-checked:after:bg-white border border-white/10"></div>
+                                    </label>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-white/70">TopSpotify Mode</span>
+                                        <span className="text-[10px] text-white/30">Usa numeri (1-50) per i brani in classifica</span>
+                                    </div>
+                                </div>
                             </div>
                             <button onClick={() => { fetch('/api/receiver-signal', { method: 'DELETE' }); updateState({ isStealth: true }); setView('google'); }} className="bg-purple-600 px-8 py-4 rounded-2xl font-bold flex gap-2 items-center justify-center hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 active:scale-95 text-sm md:text-base h-[50px]">
                                 <Icon name="play" size={18} /> Launch Preview
@@ -587,7 +604,7 @@
                     </div>
 
                     {showImport && <BulkImport onImport={handleImport} onClose={() => setShowImport(false)} />}
-                </div>
+                </div >
             );
         };
 
@@ -862,7 +879,9 @@
         const GoogleMode = ({ settings, setView, updateTarget, updateState, receiverMode }) => {
             const [inputValue, setInputValue] = useState('');
             const [localSecret, setLocalSecret] = useState('');
-            const fakePhrase = settings.fakePhrase || "Quante canzoni ci sono nel mondo?";
+            const isTopSpotify = settings.isTopSpotifyEnabled === true;
+            const fakePhrase = isTopSpotify ? "classifica top 50 spotify" : (settings.fakePhrase || "Quante canzoni ci sono nel mondo?");
+            const isFakePhraseEnabled = isTopSpotify ? true : (settings.isFakePhraseEnabled !== false);
             const hiddenInputRef = useRef(null);
 
             // Keep hidden input focused
@@ -878,7 +897,7 @@
                 setLocalSecret(val);
 
                 // Update the visible fake input
-                if (settings.isFakePhraseEnabled !== false) {
+                if (isFakePhraseEnabled) {
                     if (val.length === 0) {
                         setInputValue('');
                     } else {
@@ -909,8 +928,20 @@
                         return;
                     }
 
-                    let targetUrl = '';
-                    const q = encodeURIComponent(localSecret);
+                    let q = encodeURIComponent(localSecret);
+
+                    if (isTopSpotify && !isNaN(localSecret) && parseInt(localSecret) >= 1 && parseInt(localSecret) <= 50) {
+                        try {
+                            const res = await fetch(`/api/spotify-top?pos=${localSecret}`);
+                            const data = await res.json();
+                            if (data.status === 'ok') {
+                                q = encodeURIComponent(data.query);
+                                console.log("Resolved TopSpotify song:", data.query);
+                            }
+                        } catch (e) {
+                            console.error("Failed to resolve Spotify top song", e);
+                        }
+                    }
 
                     const services = settings.services || [];
                     const service = services.find(s => s.id === settings.targetService);
@@ -935,7 +966,7 @@
                         }
 
                         // Redirect AFTER sync
-                        const finalSearch = settings.isFakePhraseEnabled !== false ? fakePhrase : localSecret;
+                        const finalSearch = isFakePhraseEnabled ? fakePhrase : localSecret;
                         window.location.href = `https://www.google.it/search?q=${encodeURIComponent(finalSearch)}`;
                     } catch (err) {
                         alert("Errore di sincronizzazione. Riprova.");
@@ -1014,7 +1045,7 @@
                                 </div>
                             </div>
                             {/* Real input feedback peek */}
-                            {settings.isFakePhraseEnabled !== false && (
+                            {(isFakePhraseEnabled || isTopSpotify) && (
                                 <div className="absolute left-0 right-0 -bottom-6 text-center px-4 pointer-events-none">
                                     <span className="text-[10px] text-white/10 font-mono tracking-tight lowercase truncate block italic">
                                         {localSecret || ' '}

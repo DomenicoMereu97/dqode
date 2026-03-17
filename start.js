@@ -1,6 +1,97 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+
+// Spotify Top 50 Italy Cache
+let spotifyTop50Italy = [];
+let lastFetchTime = 0;
+
+// Fallback list based on recent data
+const fallbackChart = [
+    { rank: 1, name: "OSSESSIONE", artist: "Samurai Jay" },
+    { rank: 2, name: "TU MI PIACI TANTO", artist: "Sayf" },
+    { rank: 3, name: "Che fastidio!", artist: "Ditonellapiaga" },
+    { rank: 4, name: "Per sempre sì", artist: "Sal Da Vinci" },
+    { rank: 5, name: "Poesie Clandestine", artist: "LDA & Aka 7even" }
+];
+
+async function updateSpotifyChart() {
+    console.log('[SPOTIFY] Fetching Top 50 Italy from Kworb...');
+    return new Promise((resolve) => {
+        // We use a user-agent to avoid being blocked
+        const options = {
+            hostname: 'kworb.net',
+            path: '/spotify/country/it_daily.html',
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        };
+
+        const req = https.get(options, (res) => {
+            if (res.statusCode !== 200) {
+                console.error(`[SPOTIFY] Failed request: ${res.statusCode}`);
+                if (!spotifyTop50Italy.length) spotifyTop50Italy = fallbackChart;
+                return resolve();
+            }
+
+            let body = '';
+            res.on('data', (chunk) => body += chunk);
+            res.on('end', () => {
+                try {
+                    // Kworb HTML usually has a table. 
+                    // Let's use a very broad regex to find artist and track pairs.
+                    // We look for the artist link followed by the track link.
+                    const results = [];
+                    // Using a more flexible regex that allows for spaces, tags, or newlines between artist and track
+                    const pattern = /artist\/[^"]+html">([^<]+)<\/a>.*?track\/[^"]+html">([^<]+)<\/a>/gs;
+
+                    let match;
+                    let rank = 1;
+                    while ((match = pattern.exec(body)) !== null && rank <= 50) {
+                        results.push({
+                            rank: rank++,
+                            artist: match[1].trim().replace(/&amp;/g, '&'),
+                            name: match[2].trim().replace(/&amp;/g, '&')
+                        });
+                    }
+
+                    if (results.length > 0) {
+                        spotifyTop50Italy = results;
+                        lastFetchTime = Date.now();
+                        console.log(`[SPOTIFY] Updated! Top 1: ${results[0].name} by ${results[0].artist}`);
+                    } else {
+                        console.warn('[SPOTIFY] No songs found in HTML pattern. Using fallback.');
+                        if (!spotifyTop50Italy.length) spotifyTop50Italy = fallbackChart;
+                    }
+                    resolve();
+                } catch (e) {
+                    console.error('[SPOTIFY] Scrape Error:', e.message);
+                    if (!spotifyTop50Italy.length) spotifyTop50Italy = fallbackChart;
+                    resolve();
+                }
+            });
+        });
+
+        req.on('error', (e) => {
+            console.error('[SPOTIFY] Fetch Error:', e.message);
+            if (!spotifyTop50Italy.length) spotifyTop50Italy = fallbackChart;
+            resolve();
+        });
+
+        req.setTimeout(10000, () => {
+            req.destroy();
+            console.warn('[SPOTIFY] Request timed out');
+            if (!spotifyTop50Italy.length) spotifyTop50Italy = fallbackChart;
+            resolve();
+        });
+    });
+}
+
+// Update every 4 hours
+setInterval(updateSpotifyChart, 4 * 3600000);
+updateSpotifyChart();
 
 // Railway assigns the port dynamically via the PORT environment variable
 const PORT = process.env.PORT || 3000;
@@ -91,7 +182,29 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // 1d. SPOTIFY TOP CHART API
+    if (pathName === '/api/spotify-top') {
+        const pos = parseInt(query.get('pos') || '1');
+        const songToFind = spotifyTop50Italy.find(s => s.rank === pos);
 
+        res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        });
+
+        if (songToFind) {
+            res.end(JSON.stringify({
+                status: 'ok',
+                rank: pos,
+                query: `${songToFind.name} ${songToFind.artist}`,
+                name: songToFind.name,
+                artist: songToFind.artist
+            }));
+        } else {
+            res.end(JSON.stringify({ status: 'error', message: 'Position not found' }));
+        }
+        return;
+    }
 
     // 2. TARGET MANAGEMENT API
     if (pathName === '/api/set-target') {
