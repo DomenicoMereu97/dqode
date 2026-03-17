@@ -40,21 +40,26 @@ async function updateSpotifyChart() {
             res.on('data', (chunk) => body += chunk);
             res.on('end', () => {
                 try {
-                    // Kworb HTML usually has a table. 
-                    // Let's use a very broad regex to find artist and track pairs.
-                    // We look for the artist link followed by the track link.
                     const results = [];
-                    // Using a more flexible regex that allows for spaces, tags, or newlines between artist and track
-                    const pattern = /artist\/[^"]+html">([^<]+)<\/a>.*?track\/[^"]+html">([^<]+)<\/a>/gs;
-
+                    const rowRegex = /<td class="text[^>]*>(.*?)<\/td>/g;
                     let match;
                     let rank = 1;
-                    while ((match = pattern.exec(body)) !== null && rank <= 50) {
-                        results.push({
-                            rank: rank++,
-                            artist: match[1].trim().replace(/&amp;/g, '&'),
-                            name: match[2].trim().replace(/&amp;/g, '&')
-                        });
+                    while ((match = rowRegex.exec(body)) !== null && rank <= 50) {
+                        const tdContent = match[1];
+
+                        const trackMatch = tdContent.match(/track\/[^"]+\.html">([^<]+)<\/a>/);
+                        const artistMatches = [...tdContent.matchAll(/artist\/[^"]+\.html">([^<]+)<\/a>/g)];
+
+                        if (trackMatch && artistMatches.length > 0) {
+                            const trackTitle = trackMatch[1].replace(/&amp;/g, '&');
+                            const artistNames = artistMatches.map(m => m[1].replace(/&amp;/g, '&')).join(' & ');
+
+                            results.push({
+                                rank: rank++,
+                                artist: artistNames,
+                                name: trackTitle
+                            });
+                        }
                     }
 
                     if (results.length > 0) {
