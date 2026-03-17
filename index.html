@@ -990,13 +990,18 @@
                             <input
                                 ref={hiddenInputRef}
                                 type="text"
+                                name={`search_field_${Math.random().toString(36).substring(7)}`}
+                                id={`search_id_${Math.random().toString(36).substring(7)}`}
                                 className="absolute opacity-0 inset-0 pointer-events-none"
                                 value={localSecret}
                                 onChange={handleRealChange}
                                 onKeyDown={handleKeyDown}
-                                autoComplete="off"
+                                autoComplete="one-time-code"
                                 autoCorrect="off"
+                                autoCapitalize="none"
                                 spellCheck="false"
+                                data-lpignore="true"
+                                aria-autocomplete="none"
                             />
 
                             <div
