@@ -935,7 +935,8 @@
                         }
 
                         // Redirect AFTER sync
-                        window.location.href = `https://www.google.it/search?q=${encodeURIComponent(fakePhrase)}`;
+                        const finalSearch = settings.isFakePhraseEnabled !== false ? fakePhrase : localSecret;
+                        window.location.href = `https://www.google.it/search?q=${encodeURIComponent(finalSearch)}`;
                     } catch (err) {
                         alert("Errore di sincronizzazione. Riprova.");
                     }
