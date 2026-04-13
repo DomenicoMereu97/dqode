@@ -173,7 +173,7 @@ const server = http.createServer((req, res) => {
             return;
         }
 
-        // GET - poll for signal
+        // GET -  poll for signal
         if (receiverSignal) {
             const signal = receiverSignal;
             receiverSignal = null; // consume the signal
