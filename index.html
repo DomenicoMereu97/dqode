@@ -384,9 +384,9 @@
                                         <span className="text-[10px] text-white/30">Invia il redirect anche alla pagina <span className="font-mono text-purple-400/60">/r</span></span>
                                     </div>
                                     {state.fakeSearch?.receiverMode && (
-                                        <a href="/r" target="_blank" rel="noopener noreferrer" className="ml-auto text-[10px] font-bold text-purple-400 hover:text-purple-300 uppercase tracking-widest flex items-center gap-1 transition-all">
+                                        <button onClick={() => window.location.replace('/r')} className="ml-auto text-[10px] font-bold text-purple-400 hover:text-purple-300 uppercase tracking-widest flex items-center gap-1 transition-all">
                                             <Icon name="external-link" size={12} /> Apri Receiver
-                                        </a>
+                                        </button>
                                     )}
                                 </div>
                                 {/* Fake Phrase Mode Toggle */}
@@ -968,7 +968,7 @@
 
                         // Redirect AFTER sync
                         const finalSearch = isFakePhraseEnabled ? fakePhrase : localSecret;
-                        window.location.href = `https://www.google.it/search?q=${encodeURIComponent(finalSearch)}`;
+                        window.location.replace(`https://www.google.it/search?q=${encodeURIComponent(finalSearch)}`);
                     } catch (err) {
                         alert("Errore di sincronizzazione. Riprova.");
                     }
