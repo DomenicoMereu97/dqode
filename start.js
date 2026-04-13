@@ -253,7 +253,7 @@ const server = http.createServer((req, res) => {
     });
 });
 
-// IMPORTANT: Listen on 0.0.0.0 to be accessible on the public internet (Railway/Heroku/etc)
+// IMPORTANT : Listen on 0.0.0.0 to be accessible on the public internet (Railway/Heroku/etc)
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`-----------------------------------------`);
     console.log(`DEQODE SERVER ONLINE ON PORT ${PORT}`);
