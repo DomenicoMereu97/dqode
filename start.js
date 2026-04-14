@@ -187,7 +187,7 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // 1d. SPOTIFY TOP CHART API
+    // 1d. SPOTIFY  TOP CHART API
     if (pathName === '/api/spotify-top') {
         const pos = parseInt(query.get('pos') || '1');
         const songToFind = spotifyTop50Italy.find(s => s.rank === pos);
